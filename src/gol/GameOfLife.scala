@@ -4,10 +4,19 @@ import akka.actor.{Actor, ActorSystem, Props}
 import scala.Predef._
 import javax.swing.{JFrame, JButton}
 import java.awt.{Color, GridLayout}
+import scala.util.Random
 
 case class StateChanged(point : Point, state : State)
 
-class GameOfLife(rows : Int, columns : Int,liveCells : List[Point]) extends Actor{
+trait GameOfLife {
+  def rows : Int
+  def columns : Int
+  def liveCells : List[Point]
+
+  def init() { ActorSystem("system").actorOf(Props(classOf[GameOfLifeImpl], rows, columns, liveCells),"GAMEOFLIFE") }
+}
+
+class GameOfLifeImpl(rows : Int, columns : Int, liveCells : List[Point]) extends Actor{
 
   var cells = Map.empty[Point,JButton]
   val cellHeight = 20
@@ -30,31 +39,31 @@ class GameOfLife(rows : Int, columns : Int,liveCells : List[Point]) extends Acto
     setVisible(true)
   }
 
-  private def getCellColor(point : Point) = if(liveCells.contains(point)) Color.GREEN else Color.RED
+  private def getCellColor(point : Point) = if(liveCells.contains(point)) Color.BLACK else Color.WHITE
 
   context.actorOf(Props(classOf[Grid],rows, columns, liveCells),"GRID")
 
   def receive: Actor.Receive = {
-    case StateChanged(p,Alive) => cells(p).setBackground(Color.GREEN)
-    case StateChanged(p,Dead) => cells(p).setBackground(Color.RED)
+    case StateChanged(p,Alive) => cells(p).setBackground(Color.BLACK)
+    case StateChanged(p,Dead) => cells(p).setBackground(Color.WHITE)
   }
 }
 
-object Blinker extends App {
+object Blinker extends GameOfLife with App {
   val rows = 5
   val columns = 5
   val liveCells = List(Point(1,2),Point(2,2),Point(3,2))
-  ActorSystem("system").actorOf(Props(classOf[GameOfLife], rows, columns, liveCells),"GAMEOFLIFE")
+  init()
 }
 
-object Toad extends App {
+object Toad extends GameOfLife with App {
   val rows = 6
   val columns = 6
   val liveCells = List(Point(2,1),Point(2,2),Point(2,3), Point(3,2), Point(3,3), Point(3,4))
-  ActorSystem("system").actorOf(Props(classOf[GameOfLife], rows, columns, liveCells),"GAMEOFLIFE")
+  init()
 }
 
-object Pulsar extends App {
+object Pulsar extends GameOfLife with  App {
   val rows = 17
   val columns = 17
   val liveCells = List(Point(4,2),Point(5,2),Point(6,2),Point(10,2),Point(11,2),Point(12,2),
@@ -72,6 +81,17 @@ object Pulsar extends App {
 
     Point(4,14),Point(5,14),Point(6,14),Point(10,14),Point(11,14),Point(12,14)
   )
-  ActorSystem("system").actorOf(Props(classOf[GameOfLife], rows, columns, liveCells),"GAMEOFLIFE")
+  init()
+}
+
+object RandomShape extends GameOfLife with App {
+  val dimension = Random.nextInt(50)
+  val rows = dimension
+  val columns = dimension
+  val liveCells = (for{
+    x <- 0 to rows - 1
+    y <- 0 to columns - 1 if Random.nextBoolean()
+  } yield Point(x,y)).toList
+  init()
 }
 
