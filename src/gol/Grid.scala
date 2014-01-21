@@ -19,6 +19,10 @@ class Grid(private val rows : Int, columns : Int, initiallyAliveCells : List[Poi
     y <- 0 to columns - 1
   } yield Point(x,y)
 
+  private val neighboursMap = cells.foldLeft(Map.empty[Point,List[Point]]){(map, point) =>
+    map + (point -> point.getNeighbouringPoints.filter(_.liesWithin(Point(0,0), Point(rows - 1, columns - 1))))
+  }
+
   private val cellMap =  cells.foldLeft(Map.empty[Point,ActorRef]){(map, point) =>
     val state = if(initiallyAliveCells.contains(point)) Alive else Dead
     map + (point -> context.actorOf(Props(classOf[Cell],point, state, GenerationRules),s"cell${point.x},${point.y}"))
@@ -26,22 +30,20 @@ class Grid(private val rows : Int, columns : Int, initiallyAliveCells : List[Poi
 
   context.system.scheduler.schedule(0 second, 500 milli, self, Tick)
 
-  private var awaitingCurrentStates = 0
-
-  def receive = {
+  private def init(awaitingStates : Int) : Receive = {
     case Tick =>
-      awaitingCurrentStates = cells.length
       cellMap.values.foreach(_ ! SendState)
+      context.become(init(cells.length))
     case CellState(p,s) =>
-      awaitingCurrentStates -= 1
       if(s == Alive) {
-        val neighbouringPoints = p.getNeighbouringPoints.filter(_.liesWithin(Point(0,0), Point(rows - 1, columns - 1)))
-        neighbouringPoints.foreach(cellMap(_) ! AliveNeighbour)
+        neighboursMap(p).foreach(cellMap(_) ! AliveNeighbour)
       }
-      if(awaitingCurrentStates == 0){
+      if(awaitingStates == 1){
         cellMap.values.foreach(_ ! ChangeState)
       }
-    case message@StateChanged(p,s) =>
-      context.parent ! message
+      context.become(init(awaitingStates - 1))
+    case message@StateChanged(p,s) => context.parent ! message
   }
+
+  def receive = init(0)
 }

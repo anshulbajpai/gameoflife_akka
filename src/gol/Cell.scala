@@ -5,20 +5,20 @@ import gol.Grid.CellState
 import gol.Cell._
 
 class Cell(private val point : Point, private var state : State, private val generationRules : GenerationRules) extends Actor{
-   private var liveNeighbours = 0
 
-   def receive = {
-     case SendState =>
-       liveNeighbours = 0
-       sender !  CellState(point,state)
-     case AliveNeighbour => liveNeighbours += 1
+   private def init(liveNeighbours : Int) : Receive = {
+     case SendState => sender !  CellState(point,state)
+     case AliveNeighbour => context.become(init(liveNeighbours + 1))
      case ChangeState =>
        val newState = generationRules.apply(state, liveNeighbours)
        if(state != newState){
          state = newState
          sender ! StateChanged(point, state)
        }
+       context.become(init(0))
    }
+
+   def receive = init(0)
  }
 
 sealed trait State
