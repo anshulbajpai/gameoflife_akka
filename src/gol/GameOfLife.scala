@@ -29,7 +29,7 @@ class GameOfLifeImpl(rows : Int, columns : Int, liveCells : List[Point]) extends
       y <- 0 to columns -1
       point <- Some(Point(x,y))
     } {
-      val button = new JButton(){setBackground(getCellColor(point))}
+      val button = new JButton(){setBackground(getCellColor(point));setOpaque(true);setBorderPainted(false)}
       cells = cells + (point -> button)
       add(button)
     }
