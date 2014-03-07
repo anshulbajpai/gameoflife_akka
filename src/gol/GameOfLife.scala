@@ -25,8 +25,8 @@ class GameOfLifeImpl(rows : Int, columns : Int, liveCells : List[Point]) extends
   val frame = new JFrame(){
     setLayout(new GridLayout(rows,columns))
     for{
-      x <- 0 to rows-1
-      y <- 0 to columns -1
+      y <- 0 to columns-1
+      x <- 0 to rows -1
       point <- Some(Point(x,y))
     } {
       val button = new JButton(){setBackground(getCellColor(point))}
